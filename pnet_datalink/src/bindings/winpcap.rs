@@ -338,6 +338,22 @@ pub struct _IP_ADAPTER_ADDRESSES {
 pub type IP_ADAPTER_ADDRESSES = _IP_ADAPTER_ADDRESSES;
 pub type PIP_ADAPTER_ADDRESSES = *mut _IP_ADAPTER_ADDRESSES;
 
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct bpf_program {
+    pub bf_len: libc::c_uint,
+    pub bf_insns: *mut bpf_insn,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct bpf_insn {
+    pub code: libc::c_ushort,
+    pub jt: libc::c_uchar,
+    pub jf: libc::c_uchar,
+    pub k: libc::c_uint,
+}
+
 #[link(name = "iphlpapi")]
 extern "system" {
 
@@ -363,6 +379,7 @@ extern "C" {
                                lpPacket: LPPACKET,
                                Sync: win::BOOLEAN)
         -> win::BOOLEAN;
+    pub fn PacketSetBpf(lpPacket: LPADAPTER, filter: bpf_program) -> win::BOOLEAN;
     pub fn PacketAllocatePacket() -> LPPACKET;
     pub fn PacketInitPacket(lpPacket: LPPACKET, Buffer: PVOID, Length: UINT);
     pub fn PacketFreePacket(lpPacket: LPPACKET);

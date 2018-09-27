@@ -113,6 +113,41 @@ pub fn channel(network_interface: &NetworkInterface,
         return Err(io::Error::last_os_error());
     }
 
+    // filter tcp
+    // (000) ldh      [12]
+    // (001) jeq      #0x86dd          jt 2	jf 4
+    // (002) ldb      [20]
+    // (003) jeq      #0x6             jt 7	jf 8
+    // (004) jeq      #0x800           jt 5	jf 8
+    // (005) ldb      [23]
+    // (006) jeq      #0x6             jt 7	jf 8
+    // (007) ret      #0
+    // (008) ret      #262144
+    let mut bpf_instructions = vec![
+        winpcap::bpf_insn { code: 0x28, jt: 0x0, jf: 0x0, k: 0xc },
+        winpcap::bpf_insn { code: 0x15, jt: 0x0, jf: 0x6, k: 0x86dd },
+        winpcap::bpf_insn { code: 0x30, jt: 0x0, jf: 0x0, k: 0x14 },
+        winpcap::bpf_insn { code: 0x15, jt: 0x8, jf: 0x0, k: 0x6 },
+        winpcap::bpf_insn { code: 0x30, jt: 0x0, jf: 0x0, k: 0x14 },
+        winpcap::bpf_insn { code: 0x15, jt: 0x0, jf: 0x2, k: 0x2c },
+        winpcap::bpf_insn { code: 0x30, jt: 0x0, jf: 0x0, k: 0x36 },
+        winpcap::bpf_insn { code: 0x15, jt: 0x4, jf: 0x0, k: 0x6 },
+        winpcap::bpf_insn { code: 0x28, jt: 0x0, jf: 0x0, k: 0xc },
+        winpcap::bpf_insn { code: 0x15, jt: 0x0, jf: 0x3, k: 0x800 },
+        winpcap::bpf_insn { code: 0x30, jt: 0x0, jf: 0x0, k: 0x17 },
+        winpcap::bpf_insn { code: 0x15, jt: 0x0, jf: 0x1, k: 0x6 },
+        winpcap::bpf_insn { code: 0x6, jt: 0x0, jf: 0x0, k: 0x0 },
+        winpcap::bpf_insn { code: 0x6, jt: 0x0, jf: 0x0, k: 0x5ea },
+    ];
+    let bpf = winpcap::bpf_program {
+        bf_len: bpf_instructions.len() as u32,
+        bf_insns: bpf_instructions.as_mut_ptr(),
+    };
+    let ret = unsafe { winpcap::PacketSetBpf(adapter, bpf) };
+    if ret == 0 {
+        return Err(io::Error::last_os_error());
+    }
+
     let read_packet = unsafe { winpcap::PacketAllocatePacket() };
     if read_packet.is_null() {
         unsafe {
